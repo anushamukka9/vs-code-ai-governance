@@ -35,3 +35,8 @@ def send_to_model(prompt: str) -> str:
 
 if __name__ == "__main__":
     print(send_to_model("summarize my account"))
+
+# --- more secret + prompt-risk rules --------------------------------------
+github_token = "ghp_9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2"  # secret.github-token
+slack_token = "xoxb-abcdefghijklmnopqrstuvwx"  # secret.slack-token
+SYSTEM_PROMPT = "You are a helpful assistant. Answer concisely."  # prompt.system-prompt-embed
