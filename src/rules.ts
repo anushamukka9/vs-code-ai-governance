@@ -118,6 +118,24 @@ const RULES: RawRule[] = [
       "Hardcoded OpenAI-style API key. Revoke it in the provider dashboard and inject via environment.",
   },
   {
+    id: "secret.github-token",
+    category: "secret",
+    severity: "error",
+    title: "Possible GitHub token",
+    pattern: /\b(?:ghp|github_pat)_[A-Za-z0-9]{20,}\b/g,
+    message:
+      "Hardcoded GitHub personal access token. Revoke it in GitHub settings and inject via environment variables or a secret manager.",
+  },
+  {
+    id: "secret.slack-token",
+    category: "secret",
+    severity: "error",
+    title: "Possible Slack token",
+    pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g,
+    message:
+      "Hardcoded Slack token. Rotate it in the Slack app dashboard and load it at runtime from secure storage.",
+  },
+  {
     id: "secret.bearer-token",
     category: "secret",
     severity: "error",
@@ -167,6 +185,16 @@ const RULES: RawRule[] = [
       /\b(hidden|invisible|white[ -]?text|zero[ -]?width)\s+(instruction|prompt|text)\b/gi,
     message:
       "Mentions hidden instructions, a technique for smuggling instructions past human reviewers. Verify intent.",
+  },
+  {
+    id: "prompt.system-prompt-embed",
+    category: "prompt-risk",
+    severity: "warning",
+    title: "System prompt embedded in source",
+    pattern:
+      /\bsystem[_\s-]?(prompt|instructions)\s*[:=]\s*["'`]/gi,
+    message:
+      "A system prompt or system instructions string is defined inline. Treat it as a secret: keep it out of client-side code and version control, and load it from configuration.",
   },
 ];
 
