@@ -1,24 +1,24 @@
 # AI Governance Scan Report
 
 - **File:** `examples/sample-risky.py`
-- **Lines scanned:** 38
-- **Generated:** 2026-09-17T16:35:54.145Z
+- **Lines scanned:** 43
+- **Generated:** 2026-09-30T03:54:30.470Z
 - **Engine:** ai-governance heuristics v1
 
-## Verdict: ⛔ BLOCKED — fix errors before proceeding
+## Verdict: ⛔ BLOCKED - fix errors before proceeding
 
 ## Summary
 
 | Category | Findings |
 | --- | --- |
 | PII | 4 |
-| Secrets | 4 |
-| Prompt risk | 2 |
+| Secrets | 6 |
+| Prompt risk | 3 |
 
 | Severity | Findings |
 | --- | --- |
-| Error | 5 |
-| Warning | 4 |
+| Error | 7 |
+| Warning | 5 |
 | Information | 1 |
 
 ## Findings
@@ -35,6 +35,9 @@
 | 8 | 🔵 information | pii | 18:16 | `pii.ipv4` | IP address |
 | 9 | 🟡 warning | prompt-risk | 23:18 | `prompt.ignore-instructions` | Instruction-override phrasing |
 | 10 | 🟡 warning | prompt-risk | 24:20 | `prompt.system-prompt-leak` | System prompt disclosure request |
+| 11 | 🔴 error | secret | 40:17 | `secret.github-token` | Possible GitHub token |
+| 12 | 🔴 error | secret | 41:16 | `secret.slack-token` | Possible Slack token |
+| 13 | 🟡 warning | prompt-risk | 42:1 | `prompt.system-prompt-embed` | System prompt embedded in source |
 
 ## Detail
 
@@ -117,3 +120,27 @@
 - **Severity:** warning
 - **Guidance:** Text asks an assistant to disclose its system prompt. System prompts are proprietary; flag this as a prompt-injection risk.
 - **Matched snippet:** `reveal your system prompt`
+
+### 11. Possible GitHub token
+
+- **Location:** line 40, columns 17–56
+- **Rule:** `secret.github-token` (secret)
+- **Severity:** error
+- **Guidance:** Hardcoded GitHub personal access token. Revoke it in GitHub settings and inject via environment variables or a secret manager.
+- **Matched snippet:** `ghp_9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2`
+
+### 12. Possible Slack token
+
+- **Location:** line 41, columns 16–45
+- **Rule:** `secret.slack-token` (secret)
+- **Severity:** error
+- **Guidance:** Hardcoded Slack token. Rotate it in the Slack app dashboard and load it at runtime from secure storage.
+- **Matched snippet:** `xoxb-abcdefghijklmnopqrstuvwx`
+
+### 13. System prompt embedded in source
+
+- **Location:** line 42, columns 1–18
+- **Rule:** `prompt.system-prompt-embed` (prompt-risk)
+- **Severity:** warning
+- **Guidance:** A system prompt or system instructions string is defined inline. Treat it as a secret: keep it out of client-side code and version control, and load it from configuration.
+- **Matched snippet:** `SYSTEM_PROMPT = "`
