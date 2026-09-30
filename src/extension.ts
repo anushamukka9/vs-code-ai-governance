@@ -1,15 +1,32 @@
-// VS Code extension entry point: ai-governance diagnostics + report command.
+// VS Code extension entry point: ai-governance diagnostics, hover info,
+// status-bar summary, and report commands.
 
 import * as vscode from "vscode";
 import { scanText } from "./rules";
 import { generateMarkdownReport } from "./report";
+import { buildHoverMarkdown, findingAt } from "./hover";
+import {
+  buildStatusBarText,
+  buildStatusBarTooltip,
+  countBySeverity,
+} from "./status";
 import type { Category, Finding, ScanResult } from "./types";
 
 let diagnostics: vscode.DiagnosticCollection;
+let statusItem: vscode.StatusBarItem;
+/** Latest findings per document URI, backing the hover provider. */
+const findingsByUri = new Map<string, Finding[]>();
 
 export function activate(context: vscode.ExtensionContext): void {
   diagnostics = vscode.languages.createDiagnosticCollection("ai-governance");
   context.subscriptions.push(diagnostics);
+
+  statusItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    100,
+  );
+  statusItem.command = "aiGovernance.generateReport";
+  context.subscriptions.push(statusItem);
 
   const config = () => vscode.workspace.getConfiguration("aiGovernance");
   const scanOnChange = config().get<boolean>("scanOnChange", true);
@@ -29,6 +46,28 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidSaveTextDocument((doc) => {
       if (scanOnSave) lintDocument(doc);
     }),
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      findingsByUri.delete(doc.uri.toString());
+    }),
+    vscode.languages.registerHoverProvider(
+      [{ scheme: "file" }, { scheme: "untitled" }],
+      {
+        provideHover(
+          document: vscode.TextDocument,
+          position: vscode.Position,
+        ): vscode.Hover | undefined {
+          const findings = findingsByUri.get(document.uri.toString());
+          if (!findings) return undefined;
+          const hit = findingAt(
+            findings,
+            position.line,
+            position.character,
+          );
+          if (!hit) return undefined;
+          return new vscode.Hover(new vscode.MarkdownString(buildHoverMarkdown(hit)));
+        },
+      },
+    ),
     vscode.commands.registerCommand("aiGovernance.generateReport", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {
@@ -50,6 +89,8 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand("aiGovernance.clearDiagnostics", () => {
       diagnostics.clear();
+      findingsByUri.clear();
+      updateStatusBar(undefined);
       void vscode.window.showInformationMessage(
         "AI Governance: diagnostics cleared.",
       );
@@ -82,12 +123,27 @@ function toVsCodeSeverity(s: Finding["severity"]): vscode.DiagnosticSeverity {
   }
 }
 
+function updateStatusBar(result: ScanResult | undefined): void {
+  const cfg = vscode.workspace.getConfiguration("aiGovernance");
+  const show = cfg.get<boolean>("showStatusBar", true);
+  if (!show || result === undefined) {
+    statusItem.hide();
+    return;
+  }
+  const counts = countBySeverity(result);
+  statusItem.text = buildStatusBarText(counts);
+  statusItem.tooltip = buildStatusBarTooltip(counts);
+  statusItem.show();
+}
+
 function lintDocument(doc: vscode.TextDocument): void {
   const cfg = vscode.workspace.getConfiguration("aiGovernance");
   const filePatterns = cfg.get<string[]>("filePatterns", ["*"]);
   const enabled = cfg.get<boolean>("enable", true);
   if (!enabled) {
     diagnostics.delete(doc.uri);
+    findingsByUri.delete(doc.uri.toString());
+    updateStatusBar(undefined);
     return;
   }
   if (
@@ -95,6 +151,8 @@ function lintDocument(doc: vscode.TextDocument): void {
     filePatterns.length > 0
   ) {
     diagnostics.delete(doc.uri);
+    findingsByUri.delete(doc.uri.toString());
+    updateStatusBar(undefined);
     return;
   }
 
@@ -114,6 +172,8 @@ function lintDocument(doc: vscode.TextDocument): void {
     return d;
   });
   diagnostics.set(doc.uri, vsDiags);
+  findingsByUri.set(doc.uri.toString(), result.findings);
+  updateStatusBar(result);
 }
 
 /** Minimal glob matcher supporting `*` and `**` for file-pattern config. */
@@ -129,4 +189,5 @@ function matchGlob(pattern: string, fileName: string): boolean {
 
 export function deactivate(): void {
   diagnostics?.clear();
+  statusItem?.hide();
 }
