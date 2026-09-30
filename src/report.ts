@@ -24,12 +24,12 @@ export function generateMarkdownReport(result: ScanResult): string {
 
   const verdict =
     bySeverity.error > 0
-      ? "⛔ BLOCKED — fix errors before proceeding"
+      ? "⛔ BLOCKED - fix errors before proceeding"
       : bySeverity.warning > 0
-        ? "⚠️ REVIEW — warnings require human review"
+        ? "⚠️ REVIEW - warnings require human review"
         : findings.length > 0
-          ? "ℹ️ INFORMATIONAL — low-risk findings only"
-          : "✅ CLEAN — no findings";
+          ? "ℹ️ INFORMATIONAL - low-risk findings only"
+          : "✅ CLEAN - no findings";
 
   const out: string[] = [];
   out.push("# AI Governance Scan Report");
